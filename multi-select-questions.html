@@ -1,0 +1,399 @@
+<html>
+
+<head>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+
+    <script src="https://unpkg.com/react@17/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js" crossorigin></script>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-F3w7mX95PdgyTmZZMECAngseQB83DfGTowi0iMjiWaeVhAn4FJkqJByhZMI3AhiU" crossorigin="anonymous">
+</head>
+
+<body>
+    <div id="container">
+    </div>
+</body>
+
+</html>
+
+<script type="text/babel">
+
+    const Label = ({ text }) => {
+        return (
+            <label>{text}</label>
+        )
+    }
+
+    const CardHeader = ({ children }) => {
+        return (
+            <div class="card-header">
+                {children}
+            </div>
+        );
+    }
+
+    const CardBody = ({ children }) => {
+        return (
+            <div class="card-body">
+                {children}
+            </div>
+        );
+    }
+
+    const CardFooter = ({ children }) => {
+        return (
+            <div class="card-footer">
+                {children}
+            </div>
+        );
+    }
+
+    const Card = ({ children }) => {
+        return (
+            <CardHeader>
+                {children}
+            </CardHeader>
+        );
+    }
+
+    const CheckBox = ({ value, text, onCheckboxClicked, isChecked }) => {  // ctor
+
+        // storing the state of isChecked is important so that we can query the value as checkbox has a state
+        const [localChecked, setLocalCheck] = React.useState(isChecked);
+
+        const onChange = (event) => {
+            // Changing the state of the checkbox component because user has changed the state of the ui. 
+            // This will take effect after the onchange function ends.
+            setLocalCheck(event.target.checked);
+
+            // // inner function remembering the outer function local varibales - closure
+            // onCheckboxClicked(questionIndex, optionIndex, event.target.checked);
+        };
+
+        // useEffect will get called after localChecked has changed
+        React.useEffect(() => {
+            // inner function remembering the outer function local varibales - closure
+            onCheckboxClicked(localChecked);
+        }, [localChecked]);
+
+        return (
+            <div>
+                <label>
+                    <input type="checkbox" checked={localChecked} value={value} onChange={onChange} /> &nbsp;
+                    <span>{text}</span>
+                </label>
+            </div>
+        );
+    };
+
+
+    // #TODO - Test the react checkbox component using Storybook
+    const Option = ({ optionId, text, selectedOptionFromChecked }) => {  // ctor
+        const onCheckboxClicked = (checkBoxValue) => {
+            selectedOptionFromChecked(optionId, checkBoxValue);
+        };
+
+        return (
+            <CheckBox value={optionId} text={text} isChecked={false} onCheckboxClicked={onCheckboxClicked} />
+        );
+    };
+
+
+    const OptionList = ({ optionsArray, sendCheckboxValueToQuestion }) => {
+        const selectedOptionFromChecked = (optionId, checkBoxValue) => {
+            sendCheckboxValueToQuestion(optionId, checkBoxValue);
+        };
+
+        return (
+            <div>
+                {optionsArray.map(option => <Option key={option.optionId} optionId={option.optionId} text={option.text} selectedOptionFromChecked={selectedOptionFromChecked} />)}
+            </div>
+        );
+    };
+
+
+    const Question = ({ question, sendCheckboxValueToQuestions }) => {
+
+        const sendCheckboxValueToQuestion = (optionId, checkBoxValue) => {
+            sendCheckboxValueToQuestions(question.questionId, optionId, checkBoxValue);
+        };
+
+        return (
+            <Card>
+                <CardHeader>
+                    <Label text={question.statement} />
+                </CardHeader>
+
+                <CardBody>
+                    <OptionList optionsArray={question.options} sendCheckboxValueToQuestion={sendCheckboxValueToQuestion} />
+                </CardBody>
+
+                <CardFooter>
+                    <Label text={question.marks} />
+                </CardFooter>
+            </Card>
+        );
+    };
+
+
+    const Questions = ({ questions, sendCheckboxValueToApp }) => {
+
+        const sendCheckboxValueToQuestions = (questionId, optionId, checkBoxValue) => {
+            sendCheckboxValueToApp(questionId, optionId, checkBoxValue);
+        };
+
+        return (
+            <div class="row">
+                <div clas="col-12">
+                    {questions.map(question => <Question question={question} key={question.questionId} sendCheckboxValueToQuestions={sendCheckboxValueToQuestions} />)}
+                </div>
+            </div>
+        );
+    };
+
+
+    // Calendar --------------------------------------------------------------------------
+    const Cell = ({ text }) => {
+        return (
+            <div style={{ display: "inline-block", padding: "5px", border: "1px solid", width: "75px" }}>
+                <Label text={text} />
+            </div>
+        );
+    }
+
+    const DayNames = () => {
+        const dayNamesArray = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+        return (
+            dayNamesArray.map(dayName => <Cell text={dayName} />)
+        )
+    }
+
+    const CalendarHeader = ({ text, loadPrevMonth, loadNextMonth }) => {
+
+        function prevMonth() {
+            loadPrevMonth();
+        }
+
+        function nextMonth() {
+            loadNextMonth();
+        }
+
+        return (
+            <div style={{ width: "525px" }}>
+                <button style={{ float: "left" }} onClick={prevMonth}>Prev</button>
+                <Label text={text} />
+                <button style={{ float: "right" }} onClick={nextMonth}>Next</button>
+            </div>
+        );
+    }
+
+    const Calendar = () => {
+        const [calendarDatesArray, setCalendarDatesArray] = React.useState([]);
+        const [currentDate, setCurrentDate] = React.useState(new Date());
+        const [currentMonth, setCurrentMonth] = React.useState(new Date().getMonth());
+        const [currentYear, setCurrentYear] = React.useState(new Date().getFullYear());
+        const [currentMonthName, setCurrentMonthName] = React.useState(new Date().toLocaleString("default", { month: "long" }));
+
+        const breakLineNumber = [7, 14, 21, 28, 35, 42];
+
+        React.useEffect(() => {
+            generateCalendar();
+        }, []);
+
+        React.useEffect(() => {
+            loadNextMonth();
+        }, []);
+
+        // React.useEffect(() => {
+        // loadPrevMonth();
+        // }, []);
+
+        function generateCalendar() {
+            let lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+            let firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay();
+
+            let calendarArray = [];
+            for (let i = 0; i < 42; i++) {
+                if (i < firstDayOfMonth) {
+                    calendarArray.push(0);
+                } else if (i >= firstDayOfMonth && i - firstDayOfMonth < lastDayOfMonth) {
+                    calendarArray.push(i - firstDayOfMonth + 1);
+                } else {
+                    calendarArray.push(0);
+                }
+            }
+
+            setCalendarDatesArray(calendarArray);
+        }
+
+        function loadNextMonth() {
+            if (currentMonth < 12) {
+                setCurrentMonth(currentMonth + 1);
+                generateCalendar();
+            } else if (currentMonth === 12) {
+                setCurrentMonth(0);
+                setCurrentYear(currentYear + 1);
+                generateCalendar();
+            } else { }
+        }
+
+        function loadPrevMonth() {
+            if (currentMonth > 1) {
+                setCurrentMonth(currentMonth - 1);
+                generateCalendar();
+            } else if (currentMonth === 1) {
+                setCurrentMonth(12);
+                setCurrentYear(currentYear - 1);
+                generateCalendar();
+            } else { }
+        }
+
+        return (
+            <div>
+                <CalendarHeader text={currentMonthName} loadPrevMonth={loadPrevMonth} loadNextMonth={loadNextMonth} />
+                <br />
+                <DayNames />
+                <br />
+                {calendarDatesArray.map((date, index) => breakLineNumber.includes(index) ? <span><br /> <Cell text={date} /></span> : <Cell text={date} />)}
+            </div>
+        )
+    }
+    // Calendar Ends Here ------------------------------------------------------------------------------------------------------------------------------
+
+    const server = {
+        get: () => {
+            return new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open("get", "http://localhost:3000/getQuestions", true);
+                xhr.onload = () => {
+                    const json = xhr.responseText;
+                    resolve(JSON.parse(json));
+                }
+                xhr.send();
+            });
+        },
+        getAnswer: (questions) => {
+            return new Promise((resolve, reject) => {
+                console.log(questions);
+                const xhr = new XMLHttpRequest();
+                xhr.open("post", "http://localhost:3000/getAnswer", true);
+                xhr.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
+                xhr.onload = () => {
+                    const json = xhr.responseText;
+                    resolve(JSON.parse(json));
+                }
+                xhr.send(JSON.stringify(questions));
+            })
+        }
+    }
+
+    const App = () => {
+
+        // If App was not a function component then,
+        // constructor(props) {
+        //     super(props);
+        //     this.state = {questions:[]};
+        // }
+
+        // Because App is a function component hence,
+        const [isLoading, setIsLoading] = React.useState(true);
+        const [questions, setQuestions] = React.useState([]);
+        const [answersArray, setAnswersArray] = React.useState([]);
+        const [answer, setAnswer] = React.useState(null);
+        const [showModule, setShowModule] = React.useState("exam");
+
+        const [calendarCount, setCalendarCount] = React.useState(1);
+
+        // If App was not a function component then,
+        //     componentDidMount() {
+        //         server.get()
+        //             .then(questions => {
+        //                 this.setState({ ...this.state, questions: [...this.state.questions, ...questions] });
+        //             });
+        //     }
+
+        // App is a function component hence,
+        React.useEffect(async () => {
+            try {
+                setIsLoading(true);
+                const questions = await server.get();
+                setIsLoading(false);
+
+                setQuestions(questions);
+                setAnswersArray(answersArray);
+            } catch (error) {
+                console.log(error);
+            }
+        }, []);
+
+        async function sendAnswersToServer() {
+            try {
+                setIsLoading(true);
+                console.log(answersArray);
+                // const answer = await server.getAnswer(answersArray);
+
+                // Add isSelectedField to each option object
+                setIsLoading(false);
+                setAnswer(answer);
+                console.log(answer);
+            } catch (error) {
+                console.log(error);
+            }
+        }
+
+        const sendCheckboxValueToApp = (questionId, optionId, checkBoxValue) => {
+            console.log(questionId, optionId, checkBoxValue);
+            let answersArrayClone = [...answersArray];
+
+            if(checkBoxValue) {
+                answersArrayClone.push({ questionId: questionId, optionId: optionId });
+            } else if(!checkBoxValue) {
+                answersArrayClone.splice(answersArrayClone.indexOf({ questionId: questionId, optionId: optionId }), 1);
+            } else {}
+
+            setAnswersArray(answersArrayClone);
+        };
+
+        function addCalendar() {
+            setCalendarCount(calendarCount + 1);
+        }
+
+        return (
+            <div className="container">
+                {
+                    isLoading
+                        ?
+                        <span>Please Wait</span>
+                        :
+                        answer !== null
+                            ?
+                            <div>
+                                <Label text="Test Completed Successfully!" />
+                                <br />
+                                <Label text={`Total Marks: ${answer}`} />
+                            </div>
+                            :
+                            <div>
+                                <Questions questions={questions} sendCheckboxValueToApp={sendCheckboxValueToApp} />
+                                <hr />
+                                <button onClick={sendAnswersToServer}>Finish</button>
+                            </div>
+                }
+            </div>
+        );
+
+        // ------- For Calendar ------
+        // return (
+        //     <div className="container">
+        //         {([...Array(calendarCount)].map(elementInArray => <div><Calendar /> <br /> </div>))}
+        //         <br />
+        //         <button onClick={addCalendar}>Add Calendar</button>
+        //     </div>
+        // );
+    }
+    ReactDOM.render(<App />, document.getElementById("container"));
+
+
+</script>
